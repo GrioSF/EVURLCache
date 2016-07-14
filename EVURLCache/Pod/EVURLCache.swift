@@ -57,6 +57,16 @@ public class EVURLCache : NSURLCache {
         }
     }
 
+    public override func removeAllCachedResponses() {
+        guard let cacheURL = NSURL(string: EVURLCache._cacheDirectory) else {
+            EVURLCache.debugLog("Failed to erase CACHE, none found")
+            return
+        }
+        do {
+            try NSFileManager.defaultManager().removeItemAtURL(cacheURL)
+        } catch { print(error) }
+    }
+
     // Will be called by a NSURLConnection when it's wants to know if there is something in the cache.
     public override func cachedResponseForRequest(request: NSURLRequest) -> NSCachedURLResponse? {
         guard let url = request.URL else {
