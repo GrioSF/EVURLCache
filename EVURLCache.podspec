@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
 #
 
 s.name         = "EVURLCache"
-s.version      = "2.4.0"
+s.version      = "2.10.0"
 s.summary      = "NSURLCache subclass for handeling all web requests that use NSURLRequest"
 s.description  = "This is a NSURLCache subclass for handeling all web requests that use NSURLRequest. (This includes UIWebView)"
 s.homepage     = "https://github.com/evermeer/EVURLCache"
@@ -34,7 +34,7 @@ s.license      = { :type => "MIT", :file => "LICENSE" }
 #  profile URL.
 #
 
-s.author    = "evermeer"
+s.authors    = {"evermeer" => "edwin@evict.nl"}
 s.social_media_url   = "http://twitter.com/evermeer"
 
 # ――― Platform Specifics ――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
@@ -42,8 +42,8 @@ s.social_media_url   = "http://twitter.com/evermeer"
 #  If this Pod runs only on iOS or OS X, then specify the platform and
 #  the deployment target. You can optionally include the target after the platform.
 #
-s.ios.platform = :ios, "9.0"
-s.osx.platform = :osx, "10.11"
+#s.ios.platform = :ios, "9.0"
+#s.osx.platform = :osx, "10.11"
 
 
 # ――― Deployment targets ――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
@@ -52,8 +52,8 @@ s.osx.platform = :osx, "10.11"
 #
 s.ios.deployment_target = "8.0"
 s.osx.deployment_target = "10.9"
-#s.watchos.deployment_target = '2.0'
-#s.tvos.deployment_target = '9.0'
+# s.watchos.deployment_target = '2.0'
+# s.tvos.deployment_target = '9.0'
 
 
 # ――― Source Location ―――――――――――――――――――――――――――――――――――――――――――――――――――――――――― #
@@ -91,8 +91,7 @@ s.osx.frameworks = "Foundation", "CoreServices"
 
 s.requires_arc = true
 
-s.dependency "ReachabilitySwift"
-
-
+# In cocoapods version 1 ReachabilitySwift does not work as a dependency. For now the file is included in EVURLCache
+# s.dependency "ReachabilitySwift"
 
 end
