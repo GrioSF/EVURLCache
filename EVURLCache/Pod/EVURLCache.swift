@@ -16,7 +16,7 @@ import Foundation
 #endif
 
 public class EVURLCache: NSURLCache {
-
+    
     public static var URLCACHE_CACHE_KEY = "MobileAppCacheKey" // Add this header variable to the response if you want to save the response using this key as the filename.
     public static var MAX_AGE = "604800" // The default maximum age of a cached file in seconds. (1 week)
     public static var PRE_CACHE_FOLDER = "PreCache"  // The folder in your app with the prefilled cache content
@@ -29,22 +29,22 @@ public class EVURLCache: NSURLCache {
     public static var _preCacheDirectory: String!
     public static var RECREATE_CACHE_RESPONSE = true // There is a difrence between unarchiving and recreating. I have to find out what.
     private static var _filter = { _ in return true } as ((request: NSURLRequest) -> Bool)
-
+    
     // Activate EVURLCache
     public class func activate() {
         // set caching paths
-        _cacheDirectory = NSURL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory.DocumentDirectory, NSSearchPathDomainMask.UserDomainMask, true)[0]).URLByAppendingPathComponent(CACHE_FOLDER).absoluteString
-        _preCacheDirectory = NSURL(fileURLWithPath: NSBundle.mainBundle().resourcePath!).URLByAppendingPathComponent(PRE_CACHE_FOLDER).absoluteString
-
+        _cacheDirectory = NSURL(fileURLWithPath: NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory.DocumentDirectory, NSSearchPathDomainMask.UserDomainMask, true)[0]).URLByAppendingPathComponent(CACHE_FOLDER)!.absoluteString
+        _preCacheDirectory = NSURL(fileURLWithPath: NSBundle.mainBundle().resourcePath!).URLByAppendingPathComponent(PRE_CACHE_FOLDER)!.absoluteString
+        
         let urlCache = EVURLCache(memoryCapacity: 1<<MAX_FILE_SIZE, diskCapacity: 1<<MAX_CACHE_SIZE, diskPath: _cacheDirectory)
-
+        
         NSURLCache.setSharedURLCache(urlCache)
     }
-
+    
     public class func filter (filterFor: ((request: NSURLRequest) -> Bool)) {
         _filter = filterFor
     }
-
+    
     // Log a message with info if enabled
     public static func debugLog<T>(object: T, filename: String = #file, line: Int = #line, funcname: String = #function) {
         if LOGGING {
@@ -55,7 +55,7 @@ public class EVURLCache: NSURLCache {
             print("\(dateFormatter.stringFromDate(NSDate())) \(process.processName))[\(process.processIdentifier):\(threadId)] \((filename as NSString).lastPathComponent)(\(line)) \(funcname):\r\t\(object)\n")
         }
     }
-
+    
     public override func removeAllCachedResponses() {
         guard let cacheURL = NSURL(string: EVURLCache._cacheDirectory) else {
             EVURLCache.debugLog("Failed to erase CACHE, none found")
@@ -65,30 +65,30 @@ public class EVURLCache: NSURLCache {
             try NSFileManager.defaultManager().removeItemAtURL(cacheURL)
         } catch { print(error) }
     }
-
+    
     // Will be called by a NSURLConnection when it's wants to know if there is something in the cache.
     public override func cachedResponseForRequest(request: NSURLRequest) -> NSCachedURLResponse? {
         guard let url = request.URL else {
             EVURLCache.debugLog("CACHE not allowed for nil URLs")
             return nil
         }
-
-        if url.absoluteString.isEmpty {
+        
+        if url.absoluteString!.isEmpty {
             EVURLCache.debugLog("CACHE not allowed for empty URLs")
             return nil
         }
-
+        
         if !EVURLCache._filter(request: request) {
             EVURLCache.debugLog("CACHE skipped because of filter")
             return nil
         }
-
+        
         // is caching allowed
-        if ((request.cachePolicy == NSURLRequestCachePolicy.ReloadIgnoringCacheData || url.absoluteString.hasPrefix("file:/") || url.absoluteString.hasPrefix("data:")) && EVURLCache.networkAvailable()) {
+        if ((request.cachePolicy == NSURLRequestCachePolicy.ReloadIgnoringCacheData || url.absoluteString.hasPrefix("file:/") || url.absoluteString!.hasPrefix("data:")) && EVURLCache.networkAvailable()) {
             EVURLCache.debugLog("CACHE not allowed for \(url)")
             return nil
         }
-
+        
         let storagePath = EVURLCache.storagePathForRequest(request, rootPath: EVURLCache._cacheDirectory) ?? ""
         if !NSFileManager.defaultManager().fileExistsAtPath(storagePath) {
             EVURLCache.debugLog("PRECACHE not found \(storagePath)")
@@ -98,7 +98,7 @@ public class EVURLCache: NSURLCache {
                 return nil
             }
         }
-
+        
         // Check file status only if we have network, otherwise return it anyway.
         if EVURLCache.networkAvailable() {
             if cacheItemExpired(request, storagePath: storagePath) {
@@ -107,11 +107,11 @@ public class EVURLCache: NSURLCache {
                 return nil
             }
         }
-
+        
         // Read object from file
         if let response = NSKeyedUnarchiver.unarchiveObjectWithFile(storagePath) as? NSCachedURLResponse {
             EVURLCache.debugLog("Returning cached data from \(storagePath)")
-
+            
             // I have to find out the difrence. For now I will let the developer checkt which version to use
             if EVURLCache.RECREATE_CACHE_RESPONSE {
                 // This works for most sites, but aperently not for the game as in the alternate url you see in ViewController
@@ -125,7 +125,7 @@ public class EVURLCache: NSURLCache {
         }
         return nil
     }
-
+    
     // Will be called by NSURLConnection when a request is complete.
     public override func storeCachedResponse(cachedResponse: NSCachedURLResponse, forRequest request: NSURLRequest) {
         if !EVURLCache._filter(request: request) {
@@ -137,14 +137,14 @@ public class EVURLCache: NSURLCache {
                 return
             }
         }
-
+        
         var shouldSkipCache: String? = nil
-
+        
         // check if caching is allowed according to the request
         if request.cachePolicy == NSURLRequestCachePolicy.ReloadIgnoringCacheData {
             shouldSkipCache = "request cache policy"
         }
-
+        
         // check if caching is allowed according to the response Cache-Control or Pragma header
         if let httpResponse = cachedResponse.response as? NSHTTPURLResponse {
             if let cacheControl = httpResponse.allHeaderFields["Cache-Control"] as? String {
@@ -152,14 +152,14 @@ public class EVURLCache: NSURLCache {
                     shouldSkipCache = "response cache control"
                 }
             }
-
+            
             if let cacheControl = httpResponse.allHeaderFields["Pragma"] as? String {
                 if cacheControl.lowercaseString.containsString("no-cache") {
                     shouldSkipCache = "response pragma"
                 }
             }
         }
-
+        
         if shouldSkipCache != nil {
             // If the file is in the PreCache folder, then we do want to save a copy in case we are without internet connection
             let storagePath = EVURLCache.storagePathForRequest(request, rootPath: EVURLCache._preCacheDirectory) ?? ""
@@ -169,7 +169,7 @@ public class EVURLCache: NSURLCache {
             }
             EVURLCache.debugLog("CACHE file in PreCache folder, overriding \(shouldSkipCache) : \(request.URL)")
         }
-
+        
         // create storrage folder
         let storagePath: String = EVURLCache.storagePathForRequest(request, rootPath: EVURLCache._cacheDirectory) ?? ""
         if var storageDirectory: String = NSURL(fileURLWithPath: "\(storagePath)").URLByDeletingLastPathComponent?.absoluteString.stringByRemovingPercentEncoding {
@@ -183,14 +183,14 @@ public class EVURLCache: NSURLCache {
                 EVURLCache.debugLog("Error \(error.debugDescription)")
             }
         }
-
+        
         if let previousResponse = NSKeyedUnarchiver.unarchiveObjectWithFile(storagePath) as? NSCachedURLResponse {
             if previousResponse.data == cachedResponse.data && !cacheItemExpired(request, storagePath: storagePath) {
                 EVURLCache.debugLog("CACHE not rewriting stored file")
                 return
             }
         }
-
+        
         // save file
         EVURLCache.debugLog("Writing data to \(storagePath)")
         if !NSKeyedArchiver.archiveRootObject(cachedResponse, toFile: storagePath) {
@@ -203,11 +203,11 @@ public class EVURLCache: NSURLCache {
             }
         }
     }
-
+    
     private func cacheItemExpired(request: NSURLRequest, storagePath: String) -> Bool {
         // Max cache age for request
         let maxAge: String = request.valueForHTTPHeaderField("Access-Control-Max-Age") ?? EVURLCache.MAX_AGE
-
+        
         do {
             let attributes = try NSFileManager.defaultManager().attributesOfItemAtPath(storagePath)
             if let modDate: NSDate = attributes[NSFileModificationDate] as? NSDate {
@@ -218,11 +218,11 @@ public class EVURLCache: NSURLCache {
                 }
             }
         } catch {}
-
+        
         return false
     }
-
-
+    
+    
     // return the path if the file for the request is in the PreCache or Cache.
     public static func storagePathForRequest(request: NSURLRequest) -> String? {
         var storagePath: String? = EVURLCache.storagePathForRequest(request, rootPath: EVURLCache._cacheDirectory)
@@ -234,17 +234,17 @@ public class EVURLCache: NSURLCache {
         }
         return storagePath
     }
-
+    
     // build up the complete storrage path for a request plus root folder.
     public static func storagePathForRequest(request: NSURLRequest, rootPath: String) -> String? {
         var localUrl: String!
         let host: String = request.URL?.host ?? "default"
-
+        
         let urlString = request.URL?.absoluteString ?? ""
         if urlString.hasPrefix("data:") {
             return nil
         }
-
+        
         // The filename could be forced by the remote server. This could be used to force multiple url's to the same cache file
         if let cacheKey = request.valueForHTTPHeaderField(URLCACHE_CACHE_KEY) {
             localUrl = "\(host)/\(cacheKey)"
@@ -252,35 +252,35 @@ public class EVURLCache: NSURLCache {
             if let path = request.URL?.path {
                 localUrl = "\(host)\(path)"
             }
-
+            
             if let query = request.URL?.query, let baseURL = localUrl {
                 localUrl = "\(baseURL)/\(query)"
             }
-
+            
             if localUrl == nil {
                 NSLog("WARNING: Unable to get the path from the request: \(request)")
                 return nil
             }
         }
-
+        
         // Without an extension it's treated as a folder and the file will be called index.html
         if let storageFile: String = localUrl.componentsSeparatedByString("/").last {
             if !storageFile.containsString(".") {
                 localUrl = "/\(localUrl)/index.html"
             }
         }
-
+        
         if let query = request.URL?.query {
             localUrl = "\(localUrl)_\(query)"
         }
-
+        
         // Force case insensitive compare (OSX filesystem can be case sensitive)
         if FORCE_LOWERCASE {
             localUrl = "\(rootPath)/\(localUrl.lowercaseString)"
         } else {
             localUrl = "\(rootPath)/\(localUrl)"
         }
-
+        
         // Cleanup
         if localUrl.hasPrefix("file:") {
             localUrl = localUrl.substringFromIndex(localUrl.startIndex.advancedBy(5))
@@ -289,7 +289,7 @@ public class EVURLCache: NSURLCache {
         localUrl = localUrl.stringByReplacingOccurrencesOfString("//", withString: "/")
         return localUrl
     }
-
+    
     public static func addSkipBackupAttributeToItemAtURL(url: NSURL) -> Bool {
         do {
             try url.setResourceValue(NSNumber(bool: true), forKey: NSURLIsExcludedFromBackupKey)
@@ -299,7 +299,7 @@ public class EVURLCache: NSURLCache {
         }
         return false
     }
-
+    
     // Check if we have a network connection
     private static func networkAvailable() -> Bool {
         let reachability: Reachability
